@@ -1,0 +1,1 @@
+(bind length 10) (+ 1 2 3 4) (bind breadth 10) (* length breadth)
