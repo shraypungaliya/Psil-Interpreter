@@ -7,7 +7,6 @@
   "Gets the rest of the rest of a list
   Returns - (same as given)"
   [list]
-
   (-> list
       rest
       rest))
@@ -16,7 +15,6 @@
   "Removes the first and last characters in a string
   Returns - string"
   [string]
-
   (-> string
       rest
       butlast
@@ -26,18 +24,19 @@
   "Gets the third element of a list
   Returns - (same as given)"
   [list]
-
   (-> list
       rest
       second))
 
-(defn balanced?
-  "Checks if the parentheses in a string [str] are balanced
-  Returns - boolean"
-  [s]
-
-  (let [p {\( \) \[ \] \{ \}}
-        a (set "()[]{}")]
+(let [p {\( \)
+         \[ \]
+         \{ \}}
+      a #{\( \) \[ \{ \] \}}]
+  (defn balanced?
+    "Checks if the parentheses in a string [str] are balanced
+  Returns - boolean
+  Ref: "
+    [s]
     (empty?
      (reduce (fn [[t & b :as stack] s]
                (cond (= (p t) s) b
@@ -58,30 +57,30 @@
   "Returns the call of (evaluate (return-dict [][][]))
   Returns - map"
   [exp res env]
-  
   (evaluate (return-dict exp res env)))
 
 
-(defn operation
-  "Either add or multiply [operator] given values using evaluate and the given environment
+(letfn [(inside-operation
+          [res operator environment exp-list]
+          (if (empty? exp-list)
+            res
+            (-> (first exp-list)
+                (ret-eval nil 
+                          environment)
+                :result
+                (operator res)
+                (inside-operation operator environment (rest exp-list)))))]
+  (defn operation
+    "Either add or multiply [operator] given values using evaluate and the given environment
   Returns - integer"
-  [result operator expression-list environment]
-
-  (defn inside-operation
-    [res exp-list]
-    
-    (if (empty? exp-list)
-      res
-      (-> (first exp-list)
-          (ret-eval nil environment)
-          :result
-          (operator res)
-          (inside-operation (rest exp-list)))))
-
-  (if (> (count expression-list) 1)
-    (inside-operation result expression-list)
-    (throw (Exception. (str "Invalid Program ")))
-    ))
+    [result operator expression-list environment]
+    (if (> (count expression-list)
+           1)
+      (inside-operation result
+                        operator
+                        environment
+                        expression-list)
+      (throw (Exception. (str "Invalid Program "))))))
 
 
 (defn find-open-close-parentheses
@@ -118,7 +117,7 @@
   (if (and (=  (re-find #"[a-zA-Z]+" exp) exp)
            (not (nil? (get env exp))))
     (get env exp)
-    (throw (Exception. "Invalid Program"))))
+    (throw (Exception. (str  "Invalid Program " exp env)))))
 
 (defn get-inside-expression
   "Gets the innermost expression in a given expression [exp]
@@ -136,16 +135,14 @@
   "Assigns the variable (second [exp-list]) to a value (third [exp-list] and puts this key and value into environment [env]
   Returns - map"
   [exp-list env]
-  
   (let [secexp (second exp-list)]
     (if (=  (re-find #"[a-zA-Z]+" secexp) secexp)
-      (conj
-       env
-       (hash-map secexp
-                 (-> exp-list
-                     third
-                     (ret-eval nil env)
-                     :result)))
+      (conj env
+            (hash-map secexp
+                      (-> exp-list
+                          third
+                          (ret-eval nil env)
+                          :result)))
       (throw (Exception. (str "Unable to evaluate value: " secexp))))))
 
 (defn evaluate
@@ -222,8 +219,11 @@
                    (rrest exps)
                    (str/join " " (list  (first exps) (second exps)))))))
 
+
+
 (defn separate-line
-  "If a line has more than one full expression on it, this function separates that line [exps] into individual expressions"
+  "If a line has more than one full expression on it, this function
+  separates that line [exps] into individual expressions"
   [exp]
   
   (defn helper
@@ -246,22 +246,16 @@
   (helper exp 1))
 
 (defn evaluate-all
-  "Takes a vector of expressions [exps] and recurs through them until all have been evaluated. Returns result [res]  of the final line
+  "Takes a vector of expressions [exps] and recurs through them until
+  all have been evaluated. Returns result [res]  of the final line
   Returns - integer"
   [env res exps]
-  
-
   (if (empty? exps)
-    (if (nil? res)
-      (throw (Exception. "Invalid Program "))
-      res)
-    (let [dict (-> (first exps)
-                   (return-dict res env)
-                   evaluate)
-          res (dict :result)
-          env (dict :environment)
-          exp (dict :expressions)]
-      (evaluate-all env res (rest exps)))))
+    res
+    (let [{:keys [result environment expressions]} (-> (first exps)
+                                                       (return-dict res env)
+                                                       evaluate)]
+      (evaluate-all environment result (rest exps)))))
 
 (defn find-errors
   "Finds any errors which have been found to not be caught elsewhere"
@@ -276,11 +270,15 @@
 
    (re-find #"[^b|+|*|\\(|\\)]" (str (second string)))
    (throw (Exception. "Invalid Program "))
+
+   (re-find #"\(\)" string)
+   (throw (Exception. "Invalid Program "))
    
    :else string))
 
 (defn read-psil
-  "Reads a text file [psil-file-name] which is assumed to have psil and returns result of evaluating all expressions
+  "Reads a text file [psil-file-name] which is assumed to have psil
+  and returns result of evaluating all expressions
   Returns - integer"
   [psil-file-name]
   (if (balanced? (slurp psil-file-name))
@@ -294,4 +292,3 @@
          (map find-errors)
          (evaluate-all {} nil))
     (throw (Exception. "Invalid Program "))))
-

@@ -113,4 +113,3 @@
     (is (thrown? Exception (read-psil (create-file-path "Psil-test-file14.txt"))))
     (is (thrown? Exception (read-psil (create-file-path "Psil-test-file15.txt"))))))
 
-(run-all-tests #"clojure.test.example")
